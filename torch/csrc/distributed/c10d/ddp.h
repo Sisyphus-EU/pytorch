@@ -3,7 +3,7 @@
 #include <c10d/ProcessGroup.hpp>
 
 #include <ATen/ATen.h>
-#include "c10/util/Optional.h"
+#include <c10/util/Optional.h>
 
 #include <cstddef>
 #include <memory>
@@ -12,10 +12,16 @@
 
 namespace c10d {
 
+std::vector<std::vector<at::Tensor>> bucketTensors(
+    std::vector<at::Tensor>& tensors,
+    int64_t bucketSize,
+    bool fineGrained = false);
+
 void distBroadcastCoalesced(
     ProcessGroup& processGroup,
     std::vector<at::Tensor>& tensors,
-    int64_t bufferSize);
+    int64_t bufferSize,
+    bool fineGrained = false);
 
 void syncParams(
     ProcessGroup& processGroup,

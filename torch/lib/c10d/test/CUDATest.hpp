@@ -1,10 +1,6 @@
 #pragma once
 
-#include <cuda.h>
-#include <cuda_runtime.h>
-
-#include <ATen/cuda/CUDAStream.h>
-#include <c10d/CUDAUtils.hpp>
+#include <c10/cuda/CUDAStream.h>
 
 namespace c10d {
 namespace test {

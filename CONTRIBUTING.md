@@ -129,12 +129,8 @@ and `python setup.py clean`. Then you can install in `build develop` mode again.
     * [api](torch/csrc/api) - The PyTorch C++ frontend.
     * [distributed](torch/csrc/distributed) - Distributed training
       support for PyTorch.
-* [tools](tools) - Code generation scripts for the PyTorch library
-  * [autograd](tools/autograd) - Code generation for autograd.  This
-    includes definitions of all our derivatives.
-  * [jit](tools/jit) - Code generation for JIT
-  * [amd_build](tools/amd_build) - HIPify scripts, for transpiling CUDA
-    into AMD HIP.
+* [tools](tools) - Code generation scripts for the PyTorch library.
+  See README of this directory for more details.
 * [test](tests) - Python unit tests for PyTorch Python frontend
   * [test_torch.py](test/test_torch.py) - Basic tests for PyTorch
     functionality
@@ -252,6 +248,7 @@ On the initial build, you can also speed things up with the environment
 variables `DEBUG` and `NO_CUDA`.
 
 - `DEBUG=1` will enable debug builds (-g -O0)
+- `REL_WITH_DEB_INFO=1` will enable debug symbols with optimizations (-g -O3)
 - `NO_CUDA=1` will disable compiling CUDA (in case you are developing on something not CUDA related), to save compile time.
 
 For example:
@@ -416,7 +413,7 @@ Here are a few well known pitfalls and workarounds:
   * The idiom `static_assert(f() == f())` to test if `f` is constexpr
     does not work; you'll get "error C2131: expression did not evaluate
     to a constant".  Don't use these asserts on Windows.
-    (Example: `aten/src/ATen/core/intrusive_ptr.h`)
+    (Example: `c10/util/intrusive_ptr.h`)
 
 * (NVCC) Code you access inside a `static_assert` will eagerly be
   evaluated as if it were device code, and so you might get an error
@@ -429,7 +426,7 @@ class A {
     return &singleton_;
   }
 };
-static_assert(std::is_same(A*, decltype(A::singelton()))::value, "hmm");
+static_assert(std::is_same(A*, decltype(A::singleton()))::value, "hmm");
 ```
 
 * The compiler will run out of heap if you attempt to compile files that
@@ -458,13 +455,24 @@ have more checks than older versions. In our CI, we run clang-tidy-6.0.
    uncommitted changes). Changes are picked up based on a `git diff` with the
    given revision:
   ```sh
-  $ python tools/clang_tidy.py -d build -p torch/csrc -r HEAD~1
+  $ python tools/clang_tidy.py -d build -p torch/csrc --diff 'HEAD~1'
   ```
 
 Above, it is assumed you are in the PyTorch root folder. `path/to/build` should
 be the path to where you built PyTorch from source, e.g. `build` in the PyTorch
 root folder if you used `setup.py build`. You can use `-c <clang-tidy-binary>`
-to change the clang-tidy this script uses.
+to change the clang-tidy this script uses. Make sure you have PyYaml installed,
+which is in PyTorch's `requirements.txt`.
+
+### Pre-commit Tidy/Linting Hook
+
+We use clang-tidy and flake8 to perform additional formatting and semantic checking
+of code. We provide a pre-commit git hook for performing these checks, before
+a commit is created:
+
+  ```sh
+  $ ln -s ../../tools/git-pre-commit .git/hooks/pre-commit
+  ```
 
 ## Caffe2 notes
 

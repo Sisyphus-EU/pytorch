@@ -2,7 +2,7 @@
 
 #include <array>
 #include <cstdint>
-#include <ATen/core/Macros.h>
+#include <c10/macros/Macros.h>
 #include <ATen/cuda/Array.h>
 #include <THC/THCIntegerDivider.cuh>
 
@@ -17,6 +17,7 @@ struct OffsetCalculator {
   using offset_type = at::cuda::Array<uint32_t, NARGS>;
 
   OffsetCalculator(int dims, const int64_t* sizes, const int64_t* const* strides) : dims(dims) {
+    AT_CHECK(dims <= MAX_DIMS, "tensor has too many (>25) dims");
     for (int i = 0; i < MAX_DIMS; ++i) {
       if (i < dims) {
         sizes_[i] = IntDivider<uint32_t>(sizes[i]);
@@ -29,7 +30,7 @@ struct OffsetCalculator {
     }
   }
 
-  AT_HOST_DEVICE offset_type get(uint32_t linear_idx) const {
+  C10_HOST_DEVICE offset_type get(uint32_t linear_idx) const {
     offset_type offsets;
     #pragma unroll
     for (int arg = 0; arg < NARGS; arg++) {

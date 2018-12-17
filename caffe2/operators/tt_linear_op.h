@@ -30,10 +30,9 @@ class TTLinearOp final : public Operator<Context> {
     const auto& X = Input(0); // Input array
     const auto& b = Input(1); // Bias array
     const auto& cores = Input(2); // 1D array containing the TT-cores
-    auto* Y = Output(0);
 
-    CAFFE_ENFORCE(X.ndim() > 1, "Number of dimensions in X: ", X.ndim());
-    CAFFE_ENFORCE(b.ndim() == 1, "Number of dimensions in b: ", b.ndim());
+    CAFFE_ENFORCE(X.dim() > 1, "Number of dimensions in X: ", X.dim());
+    CAFFE_ENFORCE(b.dim() == 1, "Number of dimensions in b: ", b.dim());
     CAFFE_ENFORCE(
         inp_sizes_.size() == out_sizes_.size(),
         "inp_sizes has size: ",
@@ -41,9 +40,9 @@ class TTLinearOp final : public Operator<Context> {
         ", out_sizes has size: ",
         out_sizes_.size());
     CAFFE_ENFORCE(
-        cores.ndim() == 1, "Number of dimensions in cores: ", cores.ndim());
+        cores.dim() == 1, "Number of dimensions in cores: ", cores.dim());
     // batch size
-    const int batch_size = X.ndim() > 1 ? X.dim32(0) : 1;
+    const int batch_size = X.dim() > 1 ? X.dim32(0) : 1;
 
     // dimension d of tensors
     const int d = inp_sizes_.size();
@@ -55,6 +54,7 @@ class TTLinearOp final : public Operator<Context> {
     auto Y_buf = BlobGetMutableTensor(Y_temp_.get(), Context::GetDeviceType());
     Y_buf->ResizeLike(X);
     Y_buf->CopyFrom(X);
+    Tensor* Y;
 
     // The overall forward pass involves multiplication with each core, where
     // each core has sizes dictated by inp_sizes_ and out_sizes_. Each core thus
@@ -65,7 +65,8 @@ class TTLinearOp final : public Operator<Context> {
 
       // TODO Replace by Reshape(), once wrappers are written
       Y_buf->Resize(Y_buf->numel() / curr_rows, curr_rows);
-      Y->Resize(Y_buf->numel() / curr_rows, curr_cols);
+      Y = Output(
+          0, {Y_buf->numel() / curr_rows, curr_cols}, at::dtype<float>());
 
       // Defensive checks
       CAFFE_ENFORCE(Y_buf->numel() % curr_rows == 0, Y_buf->numel(), curr_rows);
@@ -120,7 +121,7 @@ class TTLinearOp final : public Operator<Context> {
                 .transpose()
                 .eval();
     // TODO Replace by Reshape(), once wrappers are written
-    Y->Resize(batch_size, Y->numel() / batch_size);
+    Y = Output(0, {batch_size, Y->numel() / batch_size}, at::dtype<float>());
 
     // Check that output size of Y is the element-wise product of out_sizes
     int prod_out_sizes = 1;

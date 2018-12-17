@@ -1,3 +1,17 @@
+"""
+To run this file by hand from the root of the PyTorch
+repository, run:
+
+python -m tools.jit.gen_jit_dispatch \
+       build/aten/src/ATen/Declarations.yaml \
+       $OUTPUT_DIR \
+       tools/jit/templates
+
+Where $OUTPUT_DIR is where you would like the files to be
+generated.  In the full build system, OUTPUT_DIR is
+torch/csrc/jit/generated/
+"""
+
 import os
 import argparse
 import re
@@ -30,6 +44,7 @@ TYPE_MAP = {
     'Scalar': 'Scalar',
     'Scalar?': 'Scalar?',
     'Tensor': 'Tensor',
+    'Tensor?': 'Tensor?',
     'TensorList': 'Tensor[]',
     # this appears in return values instead of TensorList
     # since TensorList is a ArrayRef in arguments but a vector
@@ -55,18 +70,20 @@ def jit_type_of(arg):
     if is_sized_intlist_arg(arg):
         typ = 'int[{}]'.format(arg['size'])
 
+    if arg.get('is_nullable') and '?' not in typ:
+        typ = '{}?'.format(typ)
     return typ
 
 
 # map from aten 'simple_type' to the function that will turn a tensor into
 # that type
 FROM_IVALUE = {
-    'Device': '{}.to<at::Device>()',
+    'Device': '{}.toDevice()',
     'IntList': '{}.toIntList()->elements()',
-    'Layout': '{}.to<at::Layout>()',
+    'Layout': '{}.toLayout()',
     'Scalar': '{}.toScalar()',
     'Scalar?': '{}.toOptional<Scalar>()',
-    'ScalarType': '{}.to<at::ScalarType>()',
+    'ScalarType': '{}.toScalarType()',
     'Tensor': '{}.toTensor()',
     'TensorList': '{}.toTensorList()->elements()',
     'bool': '{}.toBool()',
@@ -194,7 +211,6 @@ def argument_order(decl):
 
 def gen_jit_dispatch(declarations, out, template_path):
     REGISTER_ATEN_OPS_CPP = CodeTemplate.from_file(template_path + '/register_aten_ops.cpp')
-    ATEN_INTERNED_STRINGS_H = CodeTemplate.from_file(template_path + '/aten_interned_strings.h')
 
     ops = []
 
@@ -316,7 +332,7 @@ def gen_jit_dispatch(declarations, out, template_path):
             {'name': 'layout', 'simple_type': 'Layout', 'default': 'strided', 'kwarg_only': True},
             # device is specified as an IntList of { at::Device::Type, device_id }
             {'name': 'device', 'simple_type': 'Device', 'kwarg_only': True,
-                'default': '[cpu, -1]'},
+                'default': '\\"cpu\\"'},
         ]
 
     for decl in jit_decls:
@@ -350,23 +366,6 @@ def gen_jit_dispatch(declarations, out, template_path):
         }
         write(out, 'register_aten_ops_%d.cpp' % i, REGISTER_ATEN_OPS_CPP, env)
 
-    # NB: Operate on aten_decls, not jit_decls, because VariableType is
-    # a client for these symbols as well
-    # NB: This means we DON'T generate interned strings for inplace ops.
-    # Change this when you do!
-    # NB: Keep this code synchronized with the code in
-    # tool/autograd/gen_variable_type.py
-    # NB: Some operations have inplace versions, but NOT non-inplace
-    # versions! Thus uninplace_api_name() is mandatory (if you remove
-    # it, you will get missing symbols.)
-    names = set(uninplace_api_name(decl['api_name']) for decl in aten_decls)
-    # NB: This grabs non keyword arguments too, but it's harmless
-    attrs = set(arg['name'] for decl in aten_decls for arg in decl['arguments'])
-    strings_env = {
-        'aten_symbols': ["_(aten, {}) \\".format(n) for n in sorted(names)],
-        'attr_symbols': ["_(attr, {}) \\".format(n) for n in sorted(attrs)]
-    }
-    write(out, 'aten_interned_strings.h', ATEN_INTERNED_STRINGS_H, strings_env)
 
 default_map = {'{}': 'None', 'nullptr': 'None', 'c10::nullopt': 'None'}
 
@@ -415,7 +414,7 @@ def signature(decl):
                 .replace('}}', ']') \
                 .replace('true', 'True') \
                 .replace('false', 'False') \
-                .replace('Reduction::ElementwiseMean', 'ElementwiseMean') \
+                .replace('Reduction::Mean', 'Mean') \
                 .replace('{}', 'None' if is_tensor_arg(arg) else '[]') \
                 .replace('{', '[') \
                 .replace('}', ']')

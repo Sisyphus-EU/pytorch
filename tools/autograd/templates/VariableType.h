@@ -34,12 +34,10 @@ using c10::optional;
 struct TORCH_API VariableType final : public at::TypeDefault {
   VariableType(Context* context, at::TypeExtendedInterface* baseType);
   at::ScalarType scalarType() const override;
-  virtual caffe2::TypeMeta typeMeta() const override;
+  caffe2::TypeMeta typeMeta() const override;
   at::Backend backend() const override;
   at::Allocator* allocator() const override;
   at::Device getDeviceFromPtr(void * data) const override;
-  Storage storage(bool resizable = false) const override;
-  Storage storage(size_t size, bool resizable = false) const override;
   Storage storageFromBlob(void * data, int64_t size, const std::function<void(void*)> & deleter) const override;
   Storage storageWithAllocator(int64_t size, at::Allocator* allocator) const override;
   std::unique_ptr<at::Generator> generator() const override;
@@ -55,9 +53,6 @@ struct TORCH_API VariableType final : public at::TypeDefault {
   static bool isVariableType(const at::Type& type);
   static std::vector<at::Type*> allCUDATypes();
   static std::vector<at::Type*> allCPUTypes();
-
-  Tensor & s_copy_(Tensor & self, const Tensor & src, bool non_blocking) const override;
-  Tensor & _s_copy_from(const Tensor & self, Tensor & dst, bool non_blocking) const override;
 
   void backward(
       Tensor& self,

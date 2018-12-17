@@ -154,24 +154,23 @@ template <>
 bool SoftmaxWithLossOp<float, CPUContext>::RunOnDevice() {
   auto& X = Input(0); // Logits
   auto& T = Input(1); // Labels / targets
-  auto* P = Output(0); // Probabilities from softmax
-  auto* avg_loss = Output(1); // Average loss
 
   const auto canonical_axis = X.canonical_axis_index(axis_);
   int N, D;
   N = X.size_to_dim(canonical_axis); // batch size
   D = X.size_from_dim(canonical_axis);
-  P->ResizeLike(X);
+  auto* P =
+      Output(0, X.sizes(), at::dtype<float>()); // Probabilities from softmax
 
   float* Pdata = P->template mutable_data<float>();
   const float* weights = (InputSize() > 2 ? Input(2).data<float>() : nullptr);
 
   if (label_prob_mode_) {
-    CAFFE_ENFORCE_GE(T.ndim(), 2);
+    CAFFE_ENFORCE_GE(T.dim(), 2);
     CAFFE_ENFORCE_EQ(T.size_to_dim(canonical_axis), N);
     CAFFE_ENFORCE_EQ(T.size_from_dim(canonical_axis), D);
   } else {
-    if (T.ndim() == canonical_axis) {
+    if (T.dim() == canonical_axis) {
       CAFFE_ENFORCE_EQ(T.numel(), N);
     } else {
       CAFFE_ENFORCE_EQ(T.size_to_dim(canonical_axis), N);
@@ -246,7 +245,9 @@ bool SoftmaxWithLossOp<float, CPUContext>::RunOnDevice() {
     }
   }
 
-  avg_loss->Resize(vector<int64_t>());
+  auto* avg_loss =
+      Output(1, vector<int64_t>(), at::dtype<float>()); // Average loss
+
   float* avg_loss_data = avg_loss->template mutable_data<float>();
   if (weight_sum != 0.0) {
     avg_loss_data[0] = loss_sum * scale_ / weight_sum;
@@ -263,21 +264,21 @@ bool SoftmaxWithLossGradientOp<float, CPUContext>::RunOnDevice() {
   // Input(2) is weights if given
   auto& P = Input(InputSize() - 2); // Probabilities from softmax
   auto& d_avg_loss = Input(InputSize() - 1); // Gradient w.r.t. avg loss
-  auto* dX = Output(0);
+
   const float* weights = (InputSize() > 4 ? Input(2).data<float>() : nullptr);
 
   const auto canonical_axis = X.canonical_axis_index(axis_);
   int N, D;
   N = X.size_to_dim(canonical_axis); // batch size
   D = X.size_from_dim(canonical_axis);
-  dX->ResizeLike(X);
+  auto* dX = Output(0, X.sizes(), at::dtype<float>());
 
   if (label_prob_mode_) {
-    CAFFE_ENFORCE_GE(T.ndim(), 2);
+    CAFFE_ENFORCE_GE(T.dim(), 2);
     CAFFE_ENFORCE_EQ(T.size_to_dim(canonical_axis), N);
     CAFFE_ENFORCE_EQ(T.size_from_dim(canonical_axis), D);
   } else {
-    if (T.ndim() == canonical_axis) {
+    if (T.dim() == canonical_axis) {
       CAFFE_ENFORCE_EQ(T.numel(), N);
     } else {
       CAFFE_ENFORCE_EQ(T.size_to_dim(canonical_axis), N);

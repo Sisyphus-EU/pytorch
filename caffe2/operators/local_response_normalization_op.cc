@@ -6,15 +6,15 @@ template<>
 bool LRNOp<float, CPUContext>::RunOnDeviceWithOrderNCHW() {
   // Note(Yangqing): this one is copied from my Caffe implementation.
   auto& X = Input(0);
-  auto* Y = Output(0);
-  DCHECK_EQ(X.ndim(), 4);
+
+  DCHECK_EQ(X.dim(), 4);
   const int N = X.dim32(0);
   const int C = X.dim32(1);
   const int H = X.dim32(2);
   const int W = X.dim32(3);
   const int image_size = C * H * W;
   const float* Xdata = X.data<float>();
-  Y->ResizeLike(X);
+  auto* Y = Output(0, X.sizes(), at::dtype<float>());
   float* Ydata = Y->template mutable_data<float>();
 
   if (OutputSize() > 1) {
@@ -70,15 +70,15 @@ bool LRNOp<float, CPUContext>::RunOnDeviceWithOrderNHWC() {
   // Note(Yangqing): This one is copied from my Decaf implementation. How many
   // variants have I written...?
   auto& X = Input(0);
-  auto* Y = Output(0);
-  DCHECK_EQ(X.ndim(), 4);
+
+  DCHECK_EQ(X.dim(), 4);
   const int N = X.dim32(0);
   const int H = X.dim32(1);
   const int W = X.dim32(2);
   const int C = X.dim32(3);
   const int num_rows = N * H * W;
   const float* Xdata = X.data<float>();
-  Y->ResizeLike(X);
+  auto* Y = Output(0, X.sizes(), at::dtype<float>());
   float* Ydata = Y->template mutable_data<float>();
 
   if (OutputSize() > 1) {
@@ -123,8 +123,8 @@ bool LRNGradientOp<float, CPUContext>::RunOnDeviceWithOrderNCHW() {
   auto& X = Input(0);
   auto& Y = Input(1);
   auto& dY = Input(2);
-  auto* dX = Output(0);
-  DCHECK_EQ(X.ndim(), 4);
+
+  DCHECK_EQ(X.dim(), 4);
   const int N = X.dim32(0);
   const int C = X.dim32(1);
   const int H = X.dim32(2);
@@ -134,7 +134,7 @@ bool LRNGradientOp<float, CPUContext>::RunOnDeviceWithOrderNCHW() {
   // long as the sizes check out.
   DCHECK_EQ(X.numel(), Y.numel());
   DCHECK_EQ(X.numel(), dY.numel());
-  dX->ResizeLike(X);
+  auto* dX = Output(0, X.sizes(), at::dtype<float>());
 
   const float* Xdata = X.data<float>();
   const float* Ydata = Y.data<float>();
@@ -226,8 +226,8 @@ bool LRNGradientOp<float, CPUContext>::RunOnDeviceWithOrderNHWC() {
   auto& X = Input(0);
   auto& Y = Input(1);
   auto& dY = Input(2);
-  auto* dX = Output(0);
-  DCHECK_EQ(X.ndim(), 4);
+
+  DCHECK_EQ(X.dim(), 4);
   const int N = X.dim32(0);
   const int H = X.dim32(1);
   const int W = X.dim32(2);
@@ -238,7 +238,7 @@ bool LRNGradientOp<float, CPUContext>::RunOnDeviceWithOrderNHWC() {
   // long as the sizes check out.
   DCHECK_EQ(X.numel(), Y.numel());
   DCHECK_EQ(X.numel(), dY.numel());
-  dX->ResizeLike(X);
+  auto* dX = Output(0, X.sizes(), at::dtype<float>());
   if (!scale_) {
     scale_ = &local_scale_tensor_;
   }

@@ -56,6 +56,9 @@ Clip
 - Max : float
 
 FC
+- Axis : int : 1
+- AxisW : int : 1
+
 GivenTensorFill
 Concat
 - Axis : int : -1
@@ -75,7 +78,3 @@ NHWC2NCHW
 
 Declare
 Export
-
-GatherRanges
-Slice
-MergeIdLists

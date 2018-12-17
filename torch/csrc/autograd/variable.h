@@ -1,11 +1,11 @@
 #pragma once
 
-#include "torch/csrc/utils/python_stub.h"
+#include <torch/csrc/utils/python_stub.h>
 
-#include "torch/csrc/WindowsTorchApiMacro.h"
-#include "torch/csrc/autograd/edge.h"
-#include "torch/csrc/autograd/function_hook.h"
-#include "torch/csrc/autograd/variable_version.h"
+#include <torch/csrc/WindowsTorchApiMacro.h>
+#include <torch/csrc/autograd/edge.h>
+#include <torch/csrc/autograd/function_hook.h>
+#include <torch/csrc/autograd/variable_version.h>
 
 #include <ATen/ATen.h>
 #include <c10/util/Exception.h>
@@ -303,7 +303,7 @@ struct TORCH_API Variable::Impl : public at::TensorImpl {
 
   int64_t dim() const override;
   const at::Storage& storage() const override;
-  int64_t storage_offset() const override;
+  void* slow_data() const override;
 
   std::shared_ptr<Function> get_grad_accumulator();
   virtual std::shared_ptr<Function>& get_grad_fn() {
@@ -319,7 +319,7 @@ struct TORCH_API Variable::Impl : public at::TensorImpl {
   /// variables.
   void set_requires_grad(bool requires_grad) override {
     AT_CHECK(
-        !requires_grad || at::isFloatingType(type().scalarType()),
+        !requires_grad || at::isFloatingType(at::typeMetaToScalarType(dtype())),
         "Only Tensors of floating point dtype can require gradients");
     requires_grad_ = requires_grad;
   }
@@ -375,6 +375,7 @@ struct TORCH_API Variable::Impl : public at::TensorImpl {
   // get_grad_accumulator.
   std::mutex mutex_;
 
+  int64_t storage_offset() const override;
  private:
   int64_t get_device_slow() const override;
 };
@@ -595,11 +596,11 @@ inline void Variable::backward(
     c10::optional<Tensor> gradient,
     bool keep_graph,
     bool create_graph) const {
-  get()->backward(gradient, keep_graph, create_graph);
+  get()->backward(std::move(gradient), keep_graph, create_graph);
 }
 
 inline void Variable::set_data(Tensor new_data) const {
-  get()->set_data(new_data);
+  get()->set_data(std::move(new_data));
 }
 
 inline void Variable::set_gradient_edge(Edge edge) noexcept {

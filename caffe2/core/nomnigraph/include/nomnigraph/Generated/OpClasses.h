@@ -565,13 +565,32 @@ class Clip : public NeuralNetOperator {
 
 class FC : public NeuralNetOperator {
  public:
-  FC() : NeuralNetOperator(NNKind::FC) {}
+  FC(int axis = 1, int axisW = 1)
+      : NeuralNetOperator(NNKind::FC), axis_(axis), axisW_(axisW) {}
 
   ~FC() {}
 
   NOMNIGRAPH_DEFINE_NN_RTTI(FC);
 
+  int getAxis() const {
+    return axis_;
+  }
+
+  int getAxisW() const {
+    return axisW_;
+  }
+
+  void setAxis(int axis) {
+    axis_ = axis;
+  }
+
+  void setAxisW(int axisW) {
+    axisW_ = axisW;
+  }
+
  private:
+  int axis_;
+  int axisW_;
 };
 
 class GivenTensorFill : public NeuralNetOperator {
@@ -742,39 +761,6 @@ class Export : public NeuralNetOperator {
   ~Export() {}
 
   NOMNIGRAPH_DEFINE_NN_RTTI(Export);
-
- private:
-};
-
-class GatherRanges : public NeuralNetOperator {
- public:
-  GatherRanges() : NeuralNetOperator(NNKind::GatherRanges) {}
-
-  ~GatherRanges() {}
-
-  NOMNIGRAPH_DEFINE_NN_RTTI(GatherRanges);
-
- private:
-};
-
-class Slice : public NeuralNetOperator {
- public:
-  Slice() : NeuralNetOperator(NNKind::Slice) {}
-
-  ~Slice() {}
-
-  NOMNIGRAPH_DEFINE_NN_RTTI(Slice);
-
- private:
-};
-
-class MergeIdLists : public NeuralNetOperator {
- public:
-  MergeIdLists() : NeuralNetOperator(NNKind::MergeIdLists) {}
-
-  ~MergeIdLists() {}
-
-  NOMNIGRAPH_DEFINE_NN_RTTI(MergeIdLists);
 
  private:
 };

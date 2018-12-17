@@ -1,11 +1,11 @@
 #pragma once
 
-#include "torch/csrc/autograd/function.h"
-#include "torch/csrc/autograd/variable.h"
+#include <torch/csrc/autograd/function.h>
+#include <torch/csrc/autograd/variable.h>
 
 #include <ATen/TensorGeometry.h>
-#include "ATen/Type.h"
-#include "c10/util/Optional.h"
+#include <ATen/Type.h>
+#include <c10/util/Optional.h>
 
 #include <cstdint>
 #include <memory>
@@ -16,7 +16,7 @@ struct CopyBackwards : public Function {
   variable_list apply(variable_list&& grads) override;
 
   at::Type *src_type = nullptr; // initialized for safety.
-  int32_t src_device = -1;
+  at::Device src_device = at::kCPU;
 };
 
 // Performs grad[idx] = fn(grad[idx]), but out-of-place. The slicing operation

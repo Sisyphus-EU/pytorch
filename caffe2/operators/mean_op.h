@@ -20,10 +20,9 @@ class MeanOp final : public Operator<Context> {
   template <typename T>
   bool DoRunWithType() {
     auto& input0 = Input(0);
-    auto* output = Output(0);
 
-    output->ResizeLike(input0);
-    output->CopyFrom(input0, &context_);
+    auto* output = Output(0, input0.sizes(), at::dtype<T>());
+    output->CopyFrom(input0, true /*async*/);
 
     if (InputSize() == 1) {
       return true;
@@ -70,7 +69,7 @@ class MeanOp final : public Operator<Context> {
       CAFFE_THROW(
           "Mean operator only supports 32-bit float, but",
           " input was of type ",
-          Input(0).meta().name());
+          Input(0).dtype().name());
     }
   }
 };
@@ -93,8 +92,8 @@ class MeanGradientOp : public Operator<Context> {
     float scale = 1.0f / num_inputs;
 
     // dX0 = scale * dY
-    auto* dX0 = Output(0);
-    dX0->ResizeLike(dY);
+
+    auto* dX0 = Output(0, dY.sizes(), at::dtype<T>());
     math::Scale(
         size, scale, dY_data, dX0->template mutable_data<T>(), &context_);
 
@@ -102,7 +101,7 @@ class MeanGradientOp : public Operator<Context> {
     for (int i = 1; i < num_inputs; i++) {
       auto* cur_dX = Output(i);
       cur_dX->ResizeLike(dY);
-      cur_dX->CopyFrom(*dX0, &context_);
+      cur_dX->CopyFrom(*dX0, true /*async*/);
     }
 
     return true;
@@ -115,7 +114,7 @@ class MeanGradientOp : public Operator<Context> {
       CAFFE_THROW(
           "Mean operator only supports 32-bit float, but",
           " input was of type ",
-          Input(0).meta().name());
+          Input(0).dtype().name());
     }
   }
 };

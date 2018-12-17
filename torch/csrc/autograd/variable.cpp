@@ -1,13 +1,13 @@
-#include "torch/csrc/autograd/variable.h"
+#include <torch/csrc/autograd/variable.h>
 
-#include "torch/csrc/autograd/edge.h"
-#include "torch/csrc/autograd/engine.h"
-#include "torch/csrc/autograd/function.h"
-#include "torch/csrc/autograd/functions/accumulate_grad.h"
-#include "torch/csrc/autograd/functions/tensor.h"
-#include "torch/csrc/autograd/generated/Functions.h"
-#include "torch/csrc/autograd/generated/VariableType.h"
-#include "torch/csrc/autograd/variable_version.h"
+#include <torch/csrc/autograd/edge.h>
+#include <torch/csrc/autograd/engine.h>
+#include <torch/csrc/autograd/function.h>
+#include <torch/csrc/autograd/functions/accumulate_grad.h>
+#include <torch/csrc/autograd/functions/tensor.h>
+#include <torch/csrc/autograd/generated/Functions.h>
+#include <torch/csrc/autograd/generated/VariableType.h>
+#include <torch/csrc/autograd/variable_version.h>
 
 #include <ATen/ATen.h>
 #include <c10/util/Exception.h>
@@ -22,7 +22,7 @@
 namespace torch {
 namespace autograd {
 Variable::Impl::Impl(at::Tensor data, bool requires_grad, Edge gradient_edge)
-    : TensorImpl(data.type().type_id(), data.type().typeMeta(), data.type().allocator(), /* is variable */ true),
+    : TensorImpl(data.type_id(), data.dtype(), /*allocator=*/nullptr, /* is variable */ true),
       data_(std::move(data)),
       grad_fn_(std::move(gradient_edge.function)),
       requires_grad_(false),
@@ -54,7 +54,7 @@ IntList Variable::Impl::strides() const {
 }
 
 bool Variable::Impl::is_contiguous() const {
-  AT_ERROR("variable impl does not have is_contiguous");
+  return data_.is_contiguous();
 }
 
 int64_t Variable::Impl::dim() const {
@@ -83,6 +83,10 @@ void Variable::Impl::set_stride(int64_t dim, int64_t new_stride) {
 
 void Variable::Impl::set_storage_offset(int64_t storage_offset) {
   AT_ERROR("variable impl does not have set_storage_offset");
+}
+
+void* Variable::Impl::slow_data() const {
+  return data_.unsafeGetTensorImpl()->slow_data();
 }
 
 const at::Storage& Variable::Impl::storage() const {

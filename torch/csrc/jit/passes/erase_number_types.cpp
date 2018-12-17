@@ -1,11 +1,16 @@
-#include "torch/csrc/jit/passes/erase_number_types.h"
-#include "torch/csrc/jit/constants.h"
+#include <torch/csrc/jit/passes/erase_number_types.h>
+#include <torch/csrc/jit/constants.h>
 
 namespace torch { namespace jit {
 
 static void EraseNumberTypesOnBlock(Block* block) {
   for (auto it = block->nodes().begin(), end = block->nodes().end(); it != end;
        ++it) {
+    for (auto inp : it->inputs()) {
+      if (inp->type()->isSubtypeOf(NumberType::get())) {
+        inp->setType(DynamicType::get());
+      }
+    }
     for (auto sub : it->blocks()) {
       EraseNumberTypesOnBlock(sub);
     }
@@ -22,9 +27,9 @@ static void EraseNumberTypesOnBlock(Block* block) {
           it->output()->replaceAllUsesWith(r);
         }
       } break;
-      case prim::TensorToBool:
-      case prim::BoolToTensor:
-      case prim::TensorToNum:
+      case prim::Bool:
+      case prim::Float:
+      case prim::Int:
       case prim::ImplicitTensorToNum:
       case prim::NumToTensor: {
         it->output()->replaceAllUsesWith(it->inputs()[0]);

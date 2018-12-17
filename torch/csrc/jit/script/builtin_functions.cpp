@@ -1,6 +1,6 @@
-#include "torch/csrc/jit/script/builtin_functions.h"
-#include "torch/csrc/api/include/torch/jit.h"
-#include "torch/csrc/jit/code_template.h"
+#include <torch/csrc/jit/script/builtin_functions.h>
+#include <torch/csrc/api/include/torch/jit.h>
+#include <torch/csrc/jit/code_template.h>
 
 namespace torch { namespace jit { namespace script {
 
@@ -28,10 +28,11 @@ def div(a : ${Scalar}, b : Tensor) -> Tensor:
   return torch.reciprocal(b) * a
 )SCRIPT");
 
-auto python_builtins_source = R"SCRIPT(
-def warn(string: str):
-  print(string)
-)SCRIPT";
+auto _ntuple_ops = CodeTemplate(
+R"SCRIPT(
+def _${name}(x: BroadcastingList${Length}[${Scalar}]) -> List[${Scalar}]:
+  return x
+)SCRIPT");
 
 struct BuiltinFunctionRegistry {
 
@@ -60,11 +61,11 @@ private:
   void loadSource(const std::string& source) {
     auto module = std::make_shared<script::Module>();
     defineMethodsInModule(
-        *module, source, script::nativeResolver, /*self=*/nullptr);
+        module, source, script::nativeResolver, /*self=*/nullptr);
     modules.push_back(module);
     for (auto& method : module->get_methods()) {
-      builtins_by_name[Symbol::fromQualString("aten::" + method.key)].push_back(
-          method.value.get());
+      builtins_by_name[Symbol::fromQualString("aten::" + method.key())].push_back(
+          method->get());
     }
   }
   void loadBuiltinFunctions() {
@@ -73,7 +74,23 @@ private:
       env.s("Scalar", scalar);
       loadSource(scalar_operators_source.format(env));
     }
-    loadSource(python_builtins_source);
+
+    using str_pair = std::pair<std::string, std::string>;
+    const std::vector<str_pair> name_len = {
+      str_pair("single", "1"),
+      str_pair("pair", "2"),
+      str_pair("triple", "3"),
+      str_pair("quadruple", "4"),
+    };
+    for(auto scalar: {"float", "int"}) {
+      for (auto pair: name_len) {
+        TemplateEnv env;
+        env.s("Scalar", scalar);
+        env.s("name", pair.first);
+        env.s("Length", pair.second);
+        loadSource(_ntuple_ops.format(env));
+      }
+    }
   }
   enum {UNINITIALIZED, INTIIALIZING, INITIALIZED} state = UNINITIALIZED;
   std::recursive_mutex mutex;

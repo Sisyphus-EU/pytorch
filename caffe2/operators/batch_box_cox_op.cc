@@ -75,12 +75,11 @@ bool BatchBoxCoxOp<CPUContext>::DoRunWithType() {
   auto& data = Input(DATA);
   auto& lambda1 = Input(LAMBDA1);
   auto& lambda2 = Input(LAMBDA2);
-  CAFFE_ENFORCE_GE(data.ndim(), 1);
-  auto N = data.dim(0);
+  CAFFE_ENFORCE_GE(data.dim(), 1);
+  auto N = data.size(0);
   auto D = data.size_from_dim(1);
 
-  auto* output = Output(0);
-  output->ResizeLike(Input(DATA));
+  auto* output = Output(0, Input(DATA).sizes(), at::dtype<T>());
   auto* output_ptr = output->template mutable_data<T>();
 
   if (data.numel() <= 0) {

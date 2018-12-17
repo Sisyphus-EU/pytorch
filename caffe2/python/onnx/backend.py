@@ -55,7 +55,7 @@ def force_unicode(s):
 
 def get_device_option(device):
     m = {DeviceType.CPU: caffe2_pb2.CPU,
-         DeviceType.CUDA: caffe2_pb2.CUDA}
+         DeviceType.CUDA: workspace.GpuDeviceType}
     return core.DeviceOption(m[device.type], device.device_id)
 
 
@@ -381,35 +381,6 @@ class Caffe2Backend(Backend):
                 [outputs[0], seq_lens_for_reverse], name + "/output-reversed")
 
         return outputs
-
-    @classmethod
-    def _create_upsample(cls, init_model, pred_model, n, opset_version):
-        c2_op = cls._common_onnx_node_to_caffe2_op(init_model, pred_model, n, opset_version)
-        if opset_version >= 7:
-            if len(n.attrs['scales']) != 4:
-                raise ValueError("The scales argument should have size 4")
-            elif not (np.isclose(n.attrs['scales'][0], 1) and np.isclose(n.attrs['scales'][1], 1)):
-                raise ValueError("The first two elements in the scales argument must be 1")
-            c2_op.arg.extend([caffe2.python.utils.MakeArgument('height_scale', n.attrs['scales'][2])])
-            c2_op.arg.extend([caffe2.python.utils.MakeArgument('width_scale', n.attrs['scales'][3])])
-
-        return c2_op
-
-    @classmethod
-    def _create_gaussian_fill(cls, init_model, pred_model, n, opset_version):
-        c2_op = cls._common_onnx_node_to_caffe2_op(init_model, pred_model, n,
-                                                   opset_version)
-        if "seed" in n.attrs:
-            raise ValueError("Caffe2 does not support random seed")
-
-        if "dtype" in n.attrs and n.attrs['dtype'] != onnx.TensorProtoDataType.FLOAT:
-            raise ValueError("Caffe2 does not support no-float dtype")
-
-        if "scale" in n.attrs:
-            c2_op.arg.extend([caffe2.python.utils.MakeArgument('std',
-                                                           n.attrs['scale'])])
-
-        return c2_op
 
     @classmethod
     def _create_rnn_variant(cls, init_model, pred_model, n, opset_version):
@@ -944,8 +915,8 @@ class Caffe2Backend(Backend):
         device = Device(device_str)
         if device.type == DeviceType.CPU:
             return True
-        elif device.type == DeviceType.CUDA:
-            return workspace.has_gpu_support
+        elif core.IsGPUDeviceType(device.type):
+            return workspace.has_gpu_support or workspace.has_hip_support
         return False
 
     @classmethod

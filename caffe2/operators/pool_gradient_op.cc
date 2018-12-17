@@ -69,9 +69,9 @@ bool PoolGradientOp<T, Context, PoolType>::RunOnDeviceWithOrderNCHW() {
   auto& X = Input(0);
   auto& Y = Input(1);
   auto& dY = Input(2);
-  auto* dX = Output(0);
+
   // TODO(Yangqing): Add shape checks.
-  dX->ResizeLike(X);
+  auto* dX = Output(0, X.sizes(), at::dtype<float>());
   math::Set<float, CPUContext>(
       X.numel(), 0, dX->template mutable_data<float>(), &context_);
   const float* Xdata = X.template data<float>();
@@ -200,12 +200,12 @@ bool PoolGradientOp<T, Context, PoolType>::RunOnDeviceWithOrderNHWC() {
   auto& X = Input(0);
   auto& Y = Input(1);
   auto& dY = Input(2);
-  DCHECK_EQ(dY.ndim(), kernel_.size() + 2);
-  auto* dX = Output(0);
-  dX->ResizeLike(X);
+  DCHECK_EQ(dY.dim(), kernel_.size() + 2);
 
-  int channels = X.dim32(X.ndim() - 1);
-  CAFFE_ENFORCE_EQ(channels, dY.dim32(dY.ndim() - 1));
+  auto* dX = Output(0, X.sizes(), at::dtype<float>());
+
+  int channels = X.dim32(X.dim() - 1);
+  CAFFE_ENFORCE_EQ(channels, dY.dim32(dY.dim() - 1));
   ConstEigenArrayMap<T> Ymat(
       Y.template data<float>(), channels, Y.numel() / channels);
   ConstEigenArrayMap<float> dYmat(
